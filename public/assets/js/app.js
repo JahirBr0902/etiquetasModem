@@ -305,7 +305,7 @@ function switchView(view) {
     document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
     const navBtn = document.getElementById('nav-' + (view === 'produccion' ? 'dashboard' : view));
     if (navBtn) navBtn.classList.add('active');
-    ['dashboard', 'produccion', 'modelos', 'templates', 'designer'].forEach(v => {
+    ['dashboard', 'produccion', 'impresion', 'modelos', 'templates', 'designer'].forEach(v => {
         const el = document.getElementById('view-' + v);
         if (el) el.classList.add('hidden');
     });
