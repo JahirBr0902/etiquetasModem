@@ -23,11 +23,20 @@ class EtiquetaTemplate extends Model {
     }
 
     public function update($data) {
-        $query = "UPDATE etiquetas_templates SET config_json = :config WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':config', $data['config_json']);
-        $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
-        return $stmt->execute();
+        if (isset($data['config_json'])) {
+            $query = "UPDATE etiquetas_templates SET config_json = :config WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':config', $data['config_json']);
+            $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
+            return $stmt->execute();
+        } else {
+            $query = "UPDATE etiquetas_templates SET ancho = :ancho, alto = :alto WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':ancho', $data['ancho']);
+            $stmt->bindValue(':alto', $data['alto']);
+            $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
+            return $stmt->execute();
+        }
     }
 
     public function getById($id) {

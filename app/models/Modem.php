@@ -4,24 +4,26 @@ require_once __DIR__ . '/Model.php';
 
 class Modem extends Model {
     
-    public function create($lote_id, $modelo_id, $sn, $password) {
-        $last4 = substr($sn, -4);
-        $ssid = "Witmac" . $last4;
-
-        // Aseguramos que modelo_id sea un entero
-        $modelo_id = (int)$modelo_id;
-        $lote_id = (int)$lote_id;
-
+    public function create($lote_id, $modelo_id, $sn, $ssid, $password) {
         $query = "INSERT INTO modems (lote_id, modelo_id, sn, ssid, password, estado) 
                   VALUES (:lote_id, :modelo_id, :sn, :ssid, :password, 'PENDIENTE')";
-        
         $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':lote_id', $lote_id, PDO::PARAM_INT);
-        $stmt->bindValue(':modelo_id', $modelo_id, PDO::PARAM_INT);
+        $stmt->bindValue(':lote_id', (int)$lote_id, PDO::PARAM_INT);
+        $stmt->bindValue(':modelo_id', (int)$modelo_id, PDO::PARAM_INT);
         $stmt->bindValue(':sn', $sn, PDO::PARAM_STR);
         $stmt->bindValue(':ssid', $ssid, PDO::PARAM_STR);
         $stmt->bindValue(':password', $password, PDO::PARAM_STR);
-        
+        return $stmt->execute();
+    }
+
+    public function update($id, $modelo_id, $sn, $ssid, $password) {
+        $query = "UPDATE modems SET modelo_id = :modelo_id, sn = :sn, ssid = :ssid, password = :password WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $stmt->bindValue(':modelo_id', (int)$modelo_id, PDO::PARAM_INT);
+        $stmt->bindValue(':sn', $sn, PDO::PARAM_STR);
+        $stmt->bindValue(':ssid', $ssid, PDO::PARAM_STR);
+        $stmt->bindValue(':password', $password, PDO::PARAM_STR);
         return $stmt->execute();
     }
 
@@ -43,5 +45,12 @@ class Modem extends Model {
         $stmt->bindValue(':lote_id', (int)$lote_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function delete($id) {
+        $query = "DELETE FROM modems WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        return $stmt->execute();
     }
 }

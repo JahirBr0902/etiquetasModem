@@ -17,6 +17,7 @@
             <?php 
                 include 'views/components/dashboard.php';
                 include 'views/components/produccion.php';
+                include 'views/components/impresion.php';
                 include 'views/components/modelos.php';
                 include 'views/components/templates.php';
             ?>

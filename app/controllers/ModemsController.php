@@ -11,20 +11,20 @@ class ModemsController extends Controller {
     }
 
     public function guardar($data) {
-        if (empty($data['lote_id']) || empty($data['modelo_id']) || empty($data['sn'])) {
-            return $this->error("Faltan datos obligatorios (Lote, Modelo o SN)");
+        if (empty($data['modelo_id']) || empty($data['sn'])) {
+            return $this->error("Faltan datos obligatorios (Modelo o SN)");
         }
 
         try {
-            $this->modemModel->create(
-                $data['lote_id'], 
-                $data['modelo_id'], 
-                $data['sn'], 
-                $data['password'] ?? ''
-            );
-            return $this->success([], "Modem guardado correctamente");
+            if (isset($data['id']) && !empty($data['id'])) {
+                $this->modemModel->update($data['id'], $data['modelo_id'], $data['sn'], $data['ssid'] ?? '', $data['password'] ?? '');
+                return $this->success([], "Equipo actualizado correctamente");
+            } else {
+                $this->modemModel->create($data['lote_id'], $data['modelo_id'], $data['sn'], $data['ssid'] ?? '', $data['password'] ?? '');
+                return $this->success([], "Modem guardado correctamente");
+            }
         } catch (Exception $e) { 
-            return $this->error("Error al guardar en la base de datos: " . $e->getMessage()); 
+            return $this->error("Error al procesar: " . $e->getMessage()); 
         }
     }
 
@@ -40,6 +40,14 @@ class ModemsController extends Controller {
         if (empty($data['lote_id'])) return $this->error("ID de lote no especificado");
         try {
             return $this->success($this->modemModel->getByLote($data['lote_id']));
+        } catch (Exception $e) { return $this->error($e->getMessage()); }
+    }
+
+    public function eliminar($data) {
+        if (empty($data['id'])) return $this->error("ID no especificado");
+        try {
+            $this->modemModel->delete($data['id']);
+            return $this->success([], "Equipo eliminado");
         } catch (Exception $e) { return $this->error($e->getMessage()); }
     }
 }

@@ -1,5 +1,7 @@
-// Variables Globales (Disponibles para ambos archivos)
+// Variables Globales
 window.currentLoteId = null;
+window.currentModeloId = null;
+window.currentModemId = null; 
 window.lotes = [];
 window.modelos = [];
 window.templates = [];
@@ -9,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchLotes();
     fetchModelos();
     fetchTemplates();
-    switchView('dashboard'); // Forzar vista inicial
+    switchView('dashboard');
 });
 
 async function fetchLotes() {
@@ -23,45 +25,148 @@ async function fetchLotes() {
     } catch (e) { console.error("Error cargando lotes:", e); }
 }
 
-function renderLotesDashboard() {
-    const container = document.getElementById('view-dashboard');
+function renderLotesDashboard(filtered = null) {
+    const container = document.getElementById('lotes-container');
     if (!container) return;
-    
-    container.innerHTML = window.lotes.map(l => `
+    const items = filtered || window.lotes;
+    if (!filtered) {
+        document.getElementById('stat-lotes').textContent = window.lotes.length;
+        document.getElementById('stat-templates').textContent = window.templates.length;
+    }
+    container.innerHTML = items.map(l => `
         <div onclick="seleccionarLote(${l.id})" class="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl transition-all cursor-pointer group">
             <div class="h-16 w-16 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all mb-8 shadow-inner">
                 <i class="fas fa-barcode text-2xl"></i>
             </div>
             <h3 class="text-2xl font-black text-slate-900 italic tracking-tighter uppercase mb-2">${l.nombre}</h3>
-            <span class="px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                l.estado === 'NUEVO' ? 'bg-blue-50 text-blue-600' : 
-                l.estado === 'REVISION' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
-            }">${l.estado}</span>
+            <div class="flex justify-between items-center mt-6">
+                <span class="px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                    l.estado === 'NUEVO' ? 'bg-blue-50 text-blue-600' : 
+                    l.estado === 'REVISION' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
+                }">${l.estado}</span>
+                <span class="text-[9px] text-slate-300 font-bold uppercase">${l.fecha || 'Reciente'}</span>
+            </div>
         </div>
     `).join('');
+}
+
+function filtrarLotes(query) {
+    const q = query.toLowerCase();
+    const filtered = window.lotes.filter(l => l.nombre.toLowerCase().includes(q));
+    renderLotesDashboard(filtered);
 }
 
 async function seleccionarLote(id) {
     window.currentLoteId = id;
     const lote = window.lotes.find(l => l.id == id);
-    switchView('produccion');
-    document.getElementById('nav-produccion').classList.remove('hidden');
-    document.getElementById('prod-lote-name').textContent = lote.nombre;
-    document.getElementById('prod-lote-desc').textContent = lote.descripcion || 'Sin descripción';
     
-    const badge = document.getElementById('lote-status-badge');
-    badge.className = `px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600`;
-    badge.textContent = lote.estado;
-    badge.classList.remove('hidden');
+    // Si el lote está en REVISION o IMPRESO, vamos a la vista de impresión
+    if (lote.estado === 'REVISION' || lote.estado === 'IMPRESO') {
+        switchView('impresion');
+        renderImpresion(lote);
+    } else {
+        switchView('produccion');
+        document.getElementById('nav-produccion').classList.remove('hidden');
+        document.getElementById('prod-lote-name').textContent = lote.nombre;
+        document.getElementById('prod-lote-desc').textContent = lote.descripcion || 'Sin descripción';
+        const badge = document.getElementById('lote-status-badge');
+        if (badge) {
+            badge.className = `px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600`;
+            badge.textContent = lote.estado;
+            badge.classList.remove('hidden');
+        }
+        renderBotonesAccion(lote.estado);
+        document.getElementById('prod-form-card').style.display = (lote.estado === 'NUEVO') ? 'block' : 'none';
+        fetchModems();
+    }
+}
 
-    renderBotonesAccion(lote.estado);
-    document.getElementById('prod-form-card').style.display = (lote.estado === 'NUEVO') ? 'block' : 'none';
-    fetchModems();
+async function renderImpresion(lote) {
+    document.getElementById('imp-lote-name').textContent = lote.nombre;
+    document.getElementById('imp-lote-status').textContent = lote.estado;
+    
+    const res = await fetch(`api.php?controller=Modems&action=listarPorLote&lote_id=${lote.id}`);
+    const data = await res.json();
+    
+    if (data.status === 'success') {
+        const modems = data.data;
+        window.modemsLote = modems;
+        document.getElementById('imp-lote-count').textContent = `${modems.length} EQUIPOS`;
+        
+        // Render Tabla
+        document.getElementById('imp-modems-table-body').innerHTML = modems.map(m => `
+            <tr class="hover:bg-slate-50 transition-all group">
+                <td class="px-8 py-6 font-mono font-bold text-slate-800 text-sm">${m.sn}</td>
+                <td class="px-8 py-6 text-xs text-slate-500 font-black uppercase italic">${m.modelo_nombre || 'Desconocido'}</td>
+                <td class="px-8 py-6">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">${m.ssid}</span>
+                        <span class="text-[10px] font-mono text-slate-400 mt-0.5">${m.password}</span>
+                    </div>
+                </td>
+                <td class="px-8 py-6 text-right">
+                    <span class="px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                        m.estado === 'IMPRESO' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                    }">${m.estado}</span>
+                </td>
+            </tr>
+        `).join('');
+
+        // Render Resumen de Modelos
+        const resumen = {};
+        modems.forEach(m => {
+            resumen[m.modelo_nombre] = (resumen[m.modelo_nombre] || 0) + 1;
+        });
+
+        document.getElementById('imp-resumen-modelos').innerHTML = Object.entries(resumen).map(([nombre, cant]) => `
+            <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <span class="text-[10px] font-black uppercase text-slate-600 italic">${nombre}</span>
+                <span class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black">${cant}</span>
+            </div>
+        `).join('');
+    }
+}
+
+function imprimirLote() {
+    if (!window.currentLoteId) return;
+    window.open(`print_lote.php?lote_id=${window.currentLoteId}`, '_blank');
+}
+
+async function cambiarEstadoLote(nuevoEstado) {
+    if (!window.currentLoteId) return;
+    try {
+        const res = await fetch('api.php?controller=Lotes&action=cambiarEstado', {
+            method: 'POST',
+            body: JSON.stringify({ lote_id: window.currentLoteId, nuevo_estado: nuevoEstado })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(`Lote actualizado a ${nuevoEstado}`, 'success');
+            await fetchLotes();
+            const lote = window.lotes.find(l => l.id == window.currentLoteId);
+            seleccionarLote(lote.id);
+        }
+    } catch (e) { showToast('Error al actualizar estado', 'error'); }
+}
+
+async function regresarEstadoLote() {
+    if (!window.currentLoteId) return;
+    const lote = window.lotes.find(l => l.id == window.currentLoteId);
+    let anterior = 'NUEVO';
+    
+    if (lote.estado === 'IMPRESO') anterior = 'REVISION';
+    if (lote.estado === 'COMPLETADO') anterior = 'IMPRESO';
+    
+    abrirConfirm('Regresar Lote', `¿Deseas regresar este lote al estado de ${anterior}?`, () => {
+        cambiarEstadoLote(anterior);
+        cerrarConfirm();
+    });
 }
 
 function renderBotonesAccion(estado) {
     const container = document.getElementById('lote-dynamic-actions');
-    if (estado === 'NUEVO') container.innerHTML = `<button onclick="cambiarEstadoLote('REVISION')" class="bg-white/10 text-white px-6 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest">Enviar a Revisión</button>`;
+    if (!container) return;
+    if (estado === 'NUEVO') container.innerHTML = `<button onclick="cambiarEstadoLote('REVISION')" class="bg-white/10 text-white px-6 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-white/20 transition-all">Enviar a Revisión</button>`;
     else if (estado === 'REVISION') container.innerHTML = `<button onclick="cambiarEstadoLote('IMPRESO')" class="bg-white text-blue-600 px-8 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-xl">Marcar Impreso</button>`;
     else if (estado === 'IMPRESO') container.innerHTML = `<button onclick="cambiarEstadoLote('COMPLETADO')" class="bg-green-500 text-white px-8 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest">Finalizar</button>`;
     else container.innerHTML = '';
@@ -71,15 +176,82 @@ async function fetchModems() {
     const res = await fetch(`api.php?controller=Modems&action=listarPorLote&lote_id=${window.currentLoteId}`);
     const data = await res.json();
     if (data.status === 'success') {
+        window.modemsLote = data.data;
         document.getElementById('modems-table-body').innerHTML = data.data.map(m => `
-            <tr class="hover:bg-slate-50 transition-all">
-                <td class="px-8 py-6 font-bold text-slate-800">${m.sn}<br><span class="text-[9px] text-blue-600 uppercase font-black tracking-widest">${m.ssid}</span></td>
-                <td class="px-8 py-6 uppercase text-[10px] font-black text-slate-400">${m.estado}</td>
-                <td class="px-8 py-6 text-right"><button onclick="cambiarEstadoModem(${m.id}, 'IMPRESO')" class="h-12 w-12 rounded-2xl bg-slate-50 text-slate-300 hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-print"></i></button></td>
+            <tr class="hover:bg-slate-50 transition-all group">
+                <td class="px-8 py-6 font-mono font-bold text-slate-800 text-sm">${m.sn}</td>
+                <td class="px-8 py-6 text-xs text-slate-500 font-black uppercase italic">${m.modelo_nombre || 'Desconocido'}</td>
+                <td class="px-8 py-6">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-black text-blue-600 uppercase tracking-tighter">${m.ssid}</span>
+                        <span class="text-[10px] font-mono text-slate-400 mt-0.5">${m.password}</span>
+                    </div>
+                </td>
+                <td class="px-8 py-6 uppercase text-[9px] font-black tracking-widest ${m.estado === 'IMPRESO' ? 'text-green-500' : 'text-amber-500'}">
+                    ${m.estado}
+                </td>
+                <td class="px-8 py-6 text-right">
+                    <div class="flex justify-end gap-2">
+                        <button onclick="editarModem(${m.id})" class="h-10 w-10 rounded-xl bg-slate-50 text-slate-300 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-inner" title="Editar"><i class="fas fa-pencil-alt text-[10px]"></i></button>
+                        <button onclick="confirmarEliminarModem(${m.id})" class="h-10 w-10 rounded-xl bg-slate-50 text-slate-300 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-inner" title="Eliminar"><i class="fas fa-trash-alt text-[10px]"></i></button>
+                    </div>
+                </td>
             </tr>
         `).join('');
     }
 }
+
+function editarModem(id) {
+    const m = window.modemsLote.find(mod => mod.id == id);
+    if (!m) return;
+    
+    window.currentModemId = id;
+    document.getElementById('modelo_id').value = m.modelo_id;
+    document.getElementById('sn').value = m.sn;
+    document.getElementById('ssid').value = m.ssid;
+    document.getElementById('password').value = m.password;
+    
+    document.querySelector('#prod-form-card h3').textContent = 'Editar Equipo';
+    document.getElementById('btn-submit-modem').textContent = 'Actualizar';
+    document.getElementById('btn-submit-modem').classList.replace('bg-slate-900', 'bg-blue-600');
+    document.getElementById('btn-cancel-edit').classList.remove('hidden');
+    
+    document.getElementById('sn').focus();
+}
+
+function cancelarEdicionModem() {
+    window.currentModemId = null;
+    document.getElementById('modem-form').reset();
+    document.querySelector('#prod-form-card h3').textContent = 'Agregar Equipo';
+    document.getElementById('btn-submit-modem').textContent = 'Guardar Equipo';
+    document.getElementById('btn-submit-modem').classList.replace('bg-blue-600', 'bg-slate-900');
+    document.getElementById('btn-cancel-edit').classList.add('hidden');
+}
+
+function confirmarEliminarModem(id) {
+    abrirConfirm('Eliminar Equipo', '¿Estás seguro de que deseas quitar este módem del lote? No podrás recuperarlo.', () => ejecutarEliminarModem(id));
+}
+
+async function ejecutarEliminarModem(id) {
+    try {
+        const res = await fetch(`api.php?controller=Modems&action=eliminar&id=${id}`);
+        if ((await res.json()).status === 'success') {
+            showToast('Equipo Eliminado', 'success');
+            fetchModems();
+            cerrarConfirm();
+        }
+    } catch (e) { showToast('Error al eliminar', 'error'); }
+}
+
+function abrirConfirm(titulo, msg, callback) {
+    document.getElementById('confirm-title').textContent = titulo;
+    document.getElementById('confirm-msg').textContent = msg;
+    const btn = document.getElementById('confirm-btn-exec');
+    btn.onclick = callback;
+    document.getElementById('modal-confirm').classList.remove('hidden');
+}
+
+function cerrarConfirm() { document.getElementById('modal-confirm').classList.add('hidden'); }
 
 async function fetchModelos() {
     const res = await fetch('api.php?controller=ModeloModems&action=listar');
@@ -88,33 +260,51 @@ async function fetchModelos() {
         window.modelos = data.data;
         document.getElementById('modelo_id').innerHTML = window.modelos.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
         document.getElementById('modelos-table-body').innerHTML = window.modelos.map(m => `
-            <tr class="hover:bg-slate-50"><td class="px-8 py-7 uppercase">${m.nombre}</td><td class="px-8 py-7 text-center font-black">${m.cant_etiquetas}</td><td class="px-8 py-7 text-right"><i class="fas fa-cog text-slate-200"></i></td></tr>
+            <tr class="hover:bg-slate-50 transition-all">
+                <td class="px-8 py-7">
+                    <div class="flex flex-col"><span class="text-slate-900 text-lg tracking-tighter">${m.nombre}</span><span class="text-[8px] text-slate-400 font-black tracking-widest mt-1">Registrado en sistema</span></div>
+                </td>
+                <td class="px-8 py-7">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2"><i class="fas fa-tag text-[8px] text-blue-500"></i><span class="text-[10px] text-slate-600">${m.template_primario || 'Sin asignar'}</span></div>
+                        ${m.template_secundario ? `<div class="flex items-center gap-2"><i class="fas fa-tag text-[8px] text-indigo-400"></i><span class="text-[10px] text-slate-400">${m.template_secundario} (Trasera)</span></div>` : ''}
+                    </div>
+                </td>
+                <td class="px-8 py-7 text-center"><span class="bg-slate-100 text-slate-900 px-4 py-2 rounded-xl font-black text-xs">${m.cant_etiquetas}</span></td>
+                <td class="px-8 py-7 text-right">
+                    <div class="flex justify-end gap-2">
+                        <button onclick="verPruebaPDF(${m.id})" class="h-10 px-4 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all flex items-center gap-2 text-[9px] font-black uppercase italic"><i class="fas fa-file-pdf"></i> Prueba</button>
+                        <button onclick="editarModelo(${m.id})" class="h-10 w-10 bg-slate-50 text-slate-300 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-cog text-xs"></i></button>
+                    </div>
+                </td>
+            </tr>
         `).join('');
     }
 }
+
+function verPruebaPDF(id) { window.open(`print_test.php?id=${id}`, '_blank'); }
 
 async function fetchTemplates() {
     const res = await fetch('api.php?controller=EtiquetaTemplates&action=listar');
     const data = await res.json();
     if (data.status === 'success') {
         window.templates = data.data;
+        document.getElementById('stat-templates').textContent = window.templates.length;
         document.getElementById('templates-grid').innerHTML = window.templates.map(t => `
             <div class="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col group">
                 <div class="h-12 w-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6"><i class="fas fa-vector-square"></i></div>
                 <h4 class="font-black text-slate-900 text-xl uppercase mb-2">${t.nombre}</h4>
                 <p class="text-[10px] text-slate-400 font-black mb-10">${t.ancho}x${t.alto} mm</p>
-                <button onclick="abrirDiseñador(${t.id})" class="w-full bg-slate-50 group-hover:bg-blue-600 group-hover:text-white py-4 rounded-2xl font-black text-[9px] transition-all">EDITAR DISEÑO</button>
+                <button onclick="abrirDesigner(${t.id})" class="w-full bg-slate-50 group-hover:bg-blue-600 group-hover:text-white py-4 rounded-2xl font-black text-[9px] transition-all">EDITAR DISEÑO</button>
             </div>
         `).join('');
     }
 }
 
-// Helpers
 function switchView(view) {
     document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
     const navBtn = document.getElementById('nav-' + (view === 'produccion' ? 'dashboard' : view));
     if (navBtn) navBtn.classList.add('active');
-
     ['dashboard', 'produccion', 'modelos', 'templates', 'designer'].forEach(v => {
         const el = document.getElementById('view-' + v);
         if (el) el.classList.add('hidden');
@@ -132,7 +322,6 @@ function showToast(msg, type) {
     setTimeout(() => toast.remove(), 4000);
 }
 
-// Forms
 async function guardarLote() {
     const nombre = document.getElementById('lote-nombre').value;
     const desc = document.getElementById('lote-desc').value;
@@ -143,8 +332,24 @@ async function guardarLote() {
 async function guardarModelo() {
     const nombre = document.getElementById('mod-nombre').value;
     const cant = document.getElementById('mod-cant').value;
-    const res = await fetch('api.php?controller=ModeloModems&action=guardar', { method: 'POST', body: JSON.stringify({ nombre, cant_etiquetas: cant }) });
-    if ((await res.json()).status === 'success') { cerrarModalModelo(); fetchModelos(); showToast('Modelo Guardado', 'success'); }
+    const p_id = document.getElementById('mod-template-p').value;
+    const s_id = document.getElementById('mod-template-s').value;
+    const payload = { nombre, cant_etiquetas: cant, etiqueta_primaria_id: p_id, etiqueta_secundaria_id: s_id || null };
+    if (window.currentModeloId) payload.id = window.currentModeloId;
+    const res = await fetch('api.php?controller=ModeloModems&action=guardar', { method: 'POST', body: JSON.stringify(payload) });
+    if ((await res.json()).status === 'success') { cerrarModalModelo(); fetchModelos(); showToast(window.currentModeloId ? 'Modelo Actualizado' : 'Modelo Guardado', 'success'); }
+}
+
+function editarModelo(id) {
+    const m = window.modelos.find(mod => mod.id == id);
+    if (!m) return;
+    window.currentModeloId = id;
+    abrirModalModelo();
+    document.getElementById('mod-nombre').value = m.nombre;
+    document.getElementById('mod-cant').value = m.cant_etiquetas;
+    document.getElementById('mod-template-p').value = m.etiqueta_primaria_id;
+    document.getElementById('mod-template-s').value = m.etiqueta_secundaria_id || '';
+    document.querySelector('#modal-modelo h3').textContent = 'Editar Modelo';
 }
 
 async function guardarTemplate() {
@@ -155,24 +360,53 @@ async function guardarTemplate() {
     if ((await res.json()).status === 'success') { cerrarModalTemplate(); fetchTemplates(); showToast('Formato Creado', 'success'); }
 }
 
-document.getElementById('modem-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const res = await fetch('api.php?controller=Modems&action=guardar', { 
-        method: 'POST', 
-        body: JSON.stringify({ 
-            lote_id: window.currentLoteId, 
-            modelo_id: document.getElementById('modelo_id').value, 
-            sn: document.getElementById('sn').value, 
-            password: document.getElementById('password').value 
-        }) 
-    });
-    if ((await res.json()).status === 'success') { showToast('Equipo Guardado', 'success'); document.getElementById('sn').value = ''; document.getElementById('sn').focus(); fetchModems(); }
+document.getElementById('sn').addEventListener('input', (e) => {
+    const sn = e.target.value.toUpperCase();
+    if (sn.length >= 4) {
+        const last4 = sn.slice(-4);
+        document.getElementById('ssid').value = `WITMAC_${last4}`;
+    }
 });
 
-// Modals
+document.getElementById('modem-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = { 
+        lote_id: window.currentLoteId, 
+        modelo_id: document.getElementById('modelo_id').value, 
+        sn: document.getElementById('sn').value, 
+        ssid: document.getElementById('ssid').value,
+        password: document.getElementById('password').value 
+    };
+    
+    if (window.currentModemId) payload.id = window.currentModemId;
+
+    const res = await fetch('api.php?controller=Modems&action=guardar', { 
+        method: 'POST', 
+        body: JSON.stringify(payload) 
+    });
+    
+    if ((await res.json()).status === 'success') { 
+        showToast(window.currentModemId ? 'Equipo Actualizado' : 'Equipo Guardado', 'success'); 
+        cancelarEdicionModem(); // Limpia todo
+        fetchModems(); 
+    }
+});
+
 function abrirModalLote() { document.getElementById('modal-lote').classList.remove('hidden'); }
 function cerrarModalLote() { document.getElementById('modal-lote').classList.add('hidden'); }
-function abrirModalModelo() { document.getElementById('modal-modelo').classList.remove('hidden'); }
-function cerrarModalModelo() { document.getElementById('modal-modelo').classList.add('hidden'); }
+function abrirModalModelo() { 
+    if (!window.currentModeloId) {
+        document.getElementById('mod-nombre').value = '';
+        document.getElementById('mod-cant').value = '1';
+        document.querySelector('#modal-modelo h3').textContent = 'Nuevo Modelo';
+    }
+    const p_select = document.getElementById('mod-template-p');
+    const s_select = document.getElementById('mod-template-s');
+    const options = window.templates.map(t => `<option value="${t.id}">${t.nombre} (${t.ancho}x${t.alto}mm)</option>`).join('');
+    p_select.innerHTML = options;
+    s_select.innerHTML = '<option value="">Ninguna</option>' + options;
+    document.getElementById('modal-modelo').classList.remove('hidden'); 
+}
+function cerrarModalModelo() { window.currentModeloId = null; document.getElementById('modal-modelo').classList.add('hidden'); }
 function abrirModalTemplate() { document.getElementById('modal-template').classList.remove('hidden'); }
 function cerrarModalTemplate() { document.getElementById('modal-template').classList.add('hidden'); }

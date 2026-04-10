@@ -18,8 +18,13 @@ class ModeloModemsController extends Controller {
 
     public function guardar($data) {
         try {
-            $this->modeloModel->create($data);
-            return $this->success([], "Modelo de modem guardado");
+            if (isset($data['id']) && !empty($data['id'])) {
+                $this->modeloModel->update($data);
+                return $this->success([], "Modelo actualizado correctamente");
+            } else {
+                $this->modeloModel->create($data);
+                return $this->success([], "Modelo de modem guardado");
+            }
         } catch (Exception $e) { return $this->error($e->getMessage()); }
     }
 }

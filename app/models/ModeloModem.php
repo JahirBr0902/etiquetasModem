@@ -25,4 +25,17 @@ class ModeloModem extends Model {
         $stmt->bindParam(':s_id', $data['etiqueta_secundaria_id']);
         return $stmt->execute();
     }
+
+    public function update($data) {
+        $query = "UPDATE modelos_modem SET nombre = :nombre, cant_etiquetas = :cant, 
+                  etiqueta_primaria_id = :p_id, etiqueta_secundaria_id = :s_id 
+                  WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $data['id']);
+        $stmt->bindParam(':nombre', $data['nombre']);
+        $stmt->bindParam(':cant', $data['cant_etiquetas']);
+        $stmt->bindParam(':p_id', $data['etiqueta_primaria_id']);
+        $stmt->bindParam(':s_id', $data['etiqueta_secundaria_id']);
+        return $stmt->execute();
+    }
 }
