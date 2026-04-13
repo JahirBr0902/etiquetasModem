@@ -102,7 +102,7 @@ try {
 
     <div class="print-grid">
         <?php 
-        $renderLabel = function($config, $ancho, $alto) {
+        $renderLabel = function($config, $ancho, $alto, $modeloNombre) {
             if (!$config) return;
             $items = json_decode($config, true);
             ?>
@@ -122,13 +122,31 @@ try {
                         $style .= "font-weight:".((isset($item['bold']) && $item['bold']) ? 'bold' : 'normal')."; ";
                         $style .= "font-family:".($item['fontFamily'] ?? 'sans-serif')."; ";
                         
-                        $content = $item['sampleText'] ?? $item['type'];
+                        $content = $item['sampleText'] ?? '';
+                        if ($item['type'] === 'sn') $content = "SN-12345678";
+                        if ($item['type'] === 'ssid') $content = "WITMAC_WIFI";
+                        if ($item['type'] === 'pass') $content = "PASS1234";
+                        if ($item['type'] === 'modelo') $content = $modeloNombre;
+                        
                         echo '<div class="item" style="' . $style . '">' . $content . '</div>';
-                    } elseif ($item['type'] === 'barcode') {
-                        $style .= "background: #000 !important; ";
-                        echo '<div class="item" style="' . $style . '; flex-direction:column; justify-content:flex-end; padding-bottom:1mm;">';
-                        echo '<div style="width:90%; height:70%; background: repeating-linear-gradient(90deg, #fff, #fff 1px, #000 1px, #000 2px) !important;"></div>';
-                        echo '<span style="color:#fff; font-size:1.2mm; font-weight:bold;">TEST-123456</span>';
+                    } elseif (in_array($item['type'], ['barcode', 'barcode_pass', 'barcode_model'])) {
+                        $text = "SN-12345678";
+                        if ($item['type'] === 'barcode_pass') $text = "PASS1234";
+                        if ($item['type'] === 'barcode_model') $text = $modeloNombre;
+                        $barcodeUrl = "https://bwipjs-api.metafloor.com/?bcid=code128&text=" . urlencode($text) . "&scale=2&rotate=N&includetext=false";
+                        
+                        echo '<div class="item" style="' . $style . '; flex-direction:column; justify-content:center; align-items:center; background:white;">';
+                        echo '<img src="'.$barcodeUrl.'" style="width:95%; height:80%; object-fit:stretch;">';
+                        echo '<span style="font-size:1.8mm; font-weight:900; margin-top:0.2mm; color:black; font-family:\'JetBrains Mono\', monospace;">' . $text . '</span>';
+                        echo '</div>';
+                    } elseif ($item['type'] === 'qr_pass' || $item['type'] === 'qr_wifi') {
+                        $text = "PASS1234";
+                        if ($item['type'] === 'qr_wifi') {
+                            $text = "WIFI:S:WITMAC_WIFI;T:WPA;P:PASS1234;;";
+                        }
+                        $qrUrl = "https://bwipjs-api.metafloor.com/?bcid=qrcode&text=" . urlencode($text) . "&scale=2";
+                        echo '<div class="item" style="' . $style . '; background:white; padding:1mm;">';
+                        echo '<img src="'.$qrUrl.'" style="width:100%; height:100%; object-fit:contain;">';
                         echo '</div>';
                     } elseif ($item['type'] === 'image') {
                         echo '<div class="item" style="' . $style . '"><img src="' . ($item['src'] ?? '') . '"></div>';
@@ -146,9 +164,9 @@ try {
         <?php };
 
         for ($i = 0; $i < $qty; $i++) {
-            $renderLabel($modelo['p_config'], $modelo['p_ancho'], $modelo['p_alto']);
+            $renderLabel($modelo['p_config'], $modelo['p_ancho'], $modelo['p_alto'], $modelo['nombre']);
             if ($modelo['etiqueta_secundaria_id']) {
-                $renderLabel($modelo['s_config'], $modelo['s_ancho'], $modelo['s_alto']);
+                $renderLabel($modelo['s_config'], $modelo['s_ancho'], $modelo['s_alto'], $modelo['nombre']);
             }
         }
         ?>

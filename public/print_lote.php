@@ -43,6 +43,7 @@ try {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -287,6 +288,26 @@ try {
         separator.innerHTML = `<span>— Fin de hoja ${pageIdx + 1} —</span>`;
         area.appendChild(separator);
     });
+
+    // Generar códigos de barras después del renderizado
+    requestAnimationFrame(() => {
+        document.querySelectorAll('svg[data-barcode-value]').forEach(svg => {
+            try {
+                JsBarcode(svg, svg.dataset.barcodeValue, {
+                    format: 'CODE128',
+                    displayValue: true,
+                    fontSize: 24,
+                    margin: 2,
+                    width: 2,
+                    height: 50,
+                    flat: true,
+                    background: "#ffffff"
+                });
+            } catch (err) {
+                console.warn('Barcode error en', svg.id, err);
+            }
+        });
+    });
 }
 
         function renderLabelContent(label) {
@@ -317,10 +338,26 @@ try {
                     if (item.type === 'pass') content = label.data.password;
                     if (item.type === 'modelo') content = label.data.modelo_nombre;
                     return `<div class="label-item" style="${style}">${content}</div>`;
-                } else if (item.type === 'barcode') {
-                    return `<div class="label-item" style="${style} flex-direction:column; justify-content:flex-end; padding-bottom:1mm;">
-                        <div style="width:90%; height:70%; background: repeating-linear-gradient(90deg, #000, #000 1px, #fff 1px, #fff 2px) !important;"></div>
-                        <span style="font-size:1.5mm; font-weight:bold; margin-top:0.5mm;">${label.data.sn}</span>
+                } else if (['barcode', 'barcode_pass', 'barcode_model'].includes(item.type)) {
+                    let val = label.data.sn;
+                    if (item.type === 'barcode_pass') val = label.data.password;
+                    if (item.type === 'barcode_model') val = label.data.modelo_nombre;
+                    
+                    const suffix = item.type.split('_')[1] || 'sn';
+                    const bcId = `bc_${label.data.sn.replace(/[^a-zA-Z0-9]/g, '')}_${suffix}_${label.isSecondary ? 's' : 'p'}`;
+                    
+                    // Añadimos shape-rendering: crispEdges para máxima nitidez
+                    return `<div class="label-item" style="${style}">
+                        <svg id="${bcId}" data-barcode-value="${val}" style="width:100%; height:100%; shape-rendering: crispEdges;"></svg>
+                    </div>`;
+                } else if (item.type === 'qr_pass' || item.type === 'qr_wifi') {
+                    let text = label.data.password;
+                    if (item.type === 'qr_wifi') {
+                        text = `WIFI:S:${label.data.ssid};T:WPA;P:${label.data.password};;`;
+                    }
+                    const qrUrl = `https://bwipjs-api.metafloor.com/?bcid=qrcode&text=${encodeURIComponent(text)}&scale=2`;
+                    return `<div class="label-item" style="${style} background:white; padding:1mm;">
+                        <img src="${qrUrl}" style="width:100%; height:100%; object-fit:contain;">
                     </div>`;
                 } else if (item.type === 'image') {
                     return `<div class="label-item" style="${style}"><img src="${item.src}"></div>`;

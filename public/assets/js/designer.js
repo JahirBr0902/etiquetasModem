@@ -71,10 +71,17 @@ function renderDesignItems() {
                 if (item.type === 'ssid2') el.classList.replace('text-blue-600', 'text-indigo-600');
                 if (item.type === 'ssid3') el.classList.replace('text-blue-600', 'text-purple-600');
             }
-        } else if (item.type === 'barcode') {
+        } else if (item.type === 'barcode' || item.type === 'barcode_pass' || item.type === 'barcode_model') {
+            const label = item.type === 'barcode' ? 'SN' : (item.type === 'barcode_pass' ? 'PASS' : 'MODEL');
+            const color = item.type === 'barcode' ? 'blue' : (item.type === 'barcode_pass' ? 'slate' : 'amber');
+            el.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full bg-white border border-${color}-200">
+                <i class="fas fa-barcode text-2xl text-${color}-600"></i>
+                <span class="text-[6px] font-black uppercase mt-1 text-${color}-600">CÓDIGO ${label}</span>
+            </div>`;
+        } else if (item.type === 'qr_pass') {
             el.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full bg-white border border-slate-200">
-                <i class="fas fa-barcode text-2xl"></i>
-                <span class="text-[6px] font-black uppercase mt-1">CÓDIGO SN</span>
+                <i class="fas fa-qrcode text-3xl text-slate-800"></i>
+                <span class="text-[5px] font-black uppercase mt-1 text-slate-800">QR PASS</span>
             </div>`;
         } else if (item.type === 'image') {
             el.style.backgroundImage = `url(${item.src})`;
@@ -361,11 +368,16 @@ function mostrarPreviewImpresion() {
             el.style.display = 'flex'; el.style.alignItems = 'center';
             el.style.justifyContent = 'center'; el.style.textAlign = 'center';
             el.textContent = item.sampleText;
-        } else if (item.type === 'barcode') {
+        } else if (['barcode', 'barcode_pass', 'barcode_model'].includes(item.type)) {
+            const label = item.type === 'barcode' ? 'SN' : (item.type === 'barcode_pass' ? 'PASS' : 'MODEL');
             el.style.background = '#000'; el.style.display = 'flex';
             el.style.flexDirection = 'column'; el.style.alignItems = 'center';
             el.style.justifyContent = 'flex-end';
-            el.innerHTML = `<div style="width:90%; height:70%; background: repeating-linear-gradient(90deg, #fff, #fff 1px, #000 1px, #000 3px);"></div><span style="color:#fff; font-size:1.5mm; font-weight:bold; margin-bottom:0.5mm">12345678</span>`;
+            el.innerHTML = `<div style="width:90%; height:70%; background: repeating-linear-gradient(90deg, #fff, #fff 1px, #000 1px, #000 3px);"></div><span style="color:#fff; font-size:1.5mm; font-weight:bold; margin-bottom:0.5mm">${label}</span>`;
+        } else if (item.type === 'qr_pass') {
+            el.style.background = '#000'; el.style.display = 'flex';
+            el.style.alignItems = 'center'; el.style.justifyContent = 'center';
+            el.innerHTML = `<i class="fas fa-qrcode" style="color:white; font-size: 5mm;"></i>`;
         } else if (item.type === 'image') {
             el.style.backgroundImage = `url(${item.src})`;
             el.style.backgroundSize = 'contain'; el.style.backgroundRepeat = 'no-repeat';

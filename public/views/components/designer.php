@@ -37,8 +37,24 @@
                             <span class="text-[7px] text-blue-400/50 normal-case">Serie</span>
                         </button>
                         <button onclick="addItem('barcode', '', 150, 60)" class="p-3 bg-blue-600/10 border border-blue-500/20 rounded-xl hover:bg-blue-600/20 transition-all text-left">
-                            <span class="block text-blue-400 mb-1">CÓDIGO</span>
-                            <span class="text-[7px] text-blue-400/50 normal-case">Barras</span>
+                            <span class="block text-blue-400 mb-1 font-black">CÓDIGO SN</span>
+                            <span class="text-[7px] text-blue-400/50 normal-case">Barras (Serie)</span>
+                        </button>
+                        <button onclick="addItem('barcode_pass', '', 150, 60)" class="p-3 bg-slate-600/10 border border-slate-500/20 rounded-xl hover:bg-slate-600/20 transition-all text-left">
+                            <span class="block text-slate-300 mb-1 font-black">CÓDIGO PASS</span>
+                            <span class="text-[7px] text-slate-300/50 normal-case">Barras (Contraseña)</span>
+                        </button>
+                        <button onclick="addItem('barcode_model', '', 150, 60)" class="p-3 bg-amber-600/10 border border-amber-500/20 rounded-xl hover:bg-amber-600/20 transition-all text-left">
+                            <span class="block text-amber-400 mb-1 font-black">CÓDIGO MODELO</span>
+                            <span class="text-[7px] text-amber-400/50 normal-case">Barras (Modelo)</span>
+                        </button>
+                        <button onclick="addItem('qr_pass', '', 80, 80)" class="p-3 bg-slate-600/10 border border-slate-500/20 rounded-xl hover:bg-slate-600/20 transition-all text-left">
+                            <span class="block text-slate-300 mb-1 font-black">QR PASS</span>
+                            <span class="text-[7px] text-slate-300/50 normal-case">QR (Contraseña)</span>
+                        </button>
+                        <button onclick="addItem('qr_wifi', '', 100, 100)" class="p-3 bg-green-600/10 border border-green-500/20 rounded-xl hover:bg-green-600/20 transition-all text-left">
+                            <span class="block text-green-400 mb-1 font-black">QR WIFI AUTO</span>
+                            <span class="text-[7px] text-green-400/50 normal-case">Conecta directo</span>
                         </button>
                         <button onclick="addItem('ssid', 'SSID: Witmac', 120, 25)" class="p-3 bg-blue-600/10 border border-blue-500/20 rounded-xl hover:bg-blue-600/20 transition-all text-left">
                             <span class="block text-blue-400 mb-1">SSID PRINCIPAL</span>
