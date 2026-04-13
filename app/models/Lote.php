@@ -21,13 +21,16 @@ class Lote extends Model {
     }
 
     public function updateEstado($id, $nuevoEstado) {
-        $query = "UPDATE lotes SET estado = :estado WHERE id = :id";
+        $fechaFinalizacion = ($nuevoEstado === 'COMPLETADO' || $nuevoEstado === 'IMPRESO') ? "fecha_finalizacion = CURRENT_TIMESTAMP," : "";
+        $query = "UPDATE lotes SET estado = :estado, $fechaFinalizacion fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':estado', $nuevoEstado);
         $stmt->bindParam(':id', $id);
         
+        $res = $stmt->execute();
+
         // Si el lote se marca como IMPRESO o COMPLETADO, actualizamos todos sus modems
-        if ($nuevoEstado === 'IMPRESO' || $nuevoEstado === 'COMPLETADO') {
+        if ($res && ($nuevoEstado === 'IMPRESO' || $nuevoEstado === 'COMPLETADO')) {
             $modemEstado = ($nuevoEstado === 'IMPRESO') ? 'IMPRESO' : 'COMPLETADO';
             $queryModems = "UPDATE modems SET estado = :m_estado WHERE lote_id = :l_id";
             $stmtModems = $this->conn->prepare($queryModems);
@@ -36,6 +39,6 @@ class Lote extends Model {
             $stmtModems->execute();
         }
 
-        return $stmt->execute();
+        return $res;
     }
 }

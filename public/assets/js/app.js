@@ -25,6 +25,18 @@ async function fetchLotes() {
     } catch (e) { console.error("Error cargando lotes:", e); }
 }
 
+function formatDate(dateStr) {
+    if (!dateStr) return '---';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-MX', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 function renderLotesDashboard(filtered = null) {
     const container = document.getElementById('lotes-container');
     if (!container) return;
@@ -33,21 +45,34 @@ function renderLotesDashboard(filtered = null) {
         document.getElementById('stat-lotes').textContent = window.lotes.length;
         document.getElementById('stat-templates').textContent = window.templates.length;
     }
-    container.innerHTML = items.map(l => `
+    container.innerHTML = items.map(l => {
+        let dateInfo = `<div class="flex flex-col gap-1">
+            <span class="text-[9px] text-slate-400 font-bold uppercase">Creado: ${formatDate(l.fecha_creacion)}</span>`;
+        
+        if (l.estado === 'COMPLETADO' || l.estado === 'IMPRESO') {
+            dateInfo += `<span class="text-[9px] text-green-500 font-black uppercase italic">Finalizado: ${formatDate(l.fecha_finalizacion)}</span>`;
+        } else if (l.fecha_actualizacion) {
+            dateInfo += `<span class="text-[9px] text-blue-400 font-bold uppercase">Act: ${formatDate(l.fecha_actualizacion)}</span>`;
+        }
+        dateInfo += `</div>`;
+
+        return `
         <div onclick="seleccionarLote(${l.id})" class="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl transition-all cursor-pointer group">
             <div class="h-16 w-16 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all mb-8 shadow-inner">
                 <i class="fas fa-barcode text-2xl"></i>
             </div>
             <h3 class="text-2xl font-black text-slate-900 italic tracking-tighter uppercase mb-2">${l.nombre}</h3>
-            <div class="flex justify-between items-center mt-6">
-                <span class="px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                    l.estado === 'NUEVO' ? 'bg-blue-50 text-blue-600' : 
-                    l.estado === 'REVISION' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
-                }">${l.estado}</span>
-                <span class="text-[9px] text-slate-300 font-bold uppercase">${l.fecha || 'Reciente'}</span>
+            <div class="flex flex-col gap-4 mt-6">
+                <div class="flex justify-between items-center">
+                    <span class="px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                        l.estado === 'NUEVO' ? 'bg-blue-50 text-blue-600' : 
+                        l.estado === 'REVISION' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
+                    }">${l.estado}</span>
+                </div>
+                ${dateInfo}
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function filtrarLotes(query) {
