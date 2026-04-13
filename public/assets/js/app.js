@@ -221,7 +221,10 @@ function editarModem(id) {
 
 function cancelarEdicionModem() {
     window.currentModemId = null;
+    const lastModeloId = document.getElementById('modelo_id').value; // Guardar antes de reset
     document.getElementById('modem-form').reset();
+    document.getElementById('modelo_id').value = lastModeloId; // Restaurar
+    
     document.querySelector('#prod-form-card h3').textContent = 'Agregar Equipo';
     document.getElementById('btn-submit-modem').textContent = 'Guardar Equipo';
     document.getElementById('btn-submit-modem').classList.replace('bg-blue-600', 'bg-slate-900');
@@ -258,7 +261,15 @@ async function fetchModelos() {
     const data = await res.json();
     if (data.status === 'success') {
         window.modelos = data.data;
-        document.getElementById('modelo_id').innerHTML = window.modelos.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+        const modeloSelect = document.getElementById('modelo_id');
+        modeloSelect.innerHTML = window.modelos.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+        
+        // Restaurar último modelo seleccionado
+        const lastModeloId = localStorage.getItem('last_modelo_id');
+        if (lastModeloId) {
+            modeloSelect.value = lastModeloId;
+        }
+
         document.getElementById('modelos-table-body').innerHTML = window.modelos.map(m => `
             <tr class="hover:bg-slate-50 transition-all">
                 <td class="px-8 py-7">
@@ -362,6 +373,7 @@ async function guardarTemplate() {
 
 document.getElementById('sn').addEventListener('input', (e) => {
     const sn = e.target.value.toUpperCase();
+    e.target.value = sn; // Forzar mayúsculas
     if (sn.length >= 4) {
         const last4 = sn.slice(-4);
         document.getElementById('ssid').value = `WITMAC_${last4}`;
@@ -370,9 +382,12 @@ document.getElementById('sn').addEventListener('input', (e) => {
 
 document.getElementById('modem-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const modelo_id = document.getElementById('modelo_id').value;
+    localStorage.setItem('last_modelo_id', modelo_id); // Guardar en cache
+
     const payload = { 
         lote_id: window.currentLoteId, 
-        modelo_id: document.getElementById('modelo_id').value, 
+        modelo_id: modelo_id, 
         sn: document.getElementById('sn').value, 
         ssid: document.getElementById('ssid').value,
         password: document.getElementById('password').value 
