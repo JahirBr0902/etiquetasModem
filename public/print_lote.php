@@ -451,6 +451,44 @@ try {
             renderPages();
         }
 
+        function rotateLabel(e, id, deg) {
+            e.stopPropagation();
+            const idsToRotate = state.selectedIds.includes(id) ? state.selectedIds : [id];
+            state.pages.forEach(p => p.forEach(l => {
+                if (idsToRotate.includes(l.uniqueId)) {
+                    l.rotation = (l.rotation + deg) % 360;
+                }
+            }));
+            renderPages();
+        }
+
+        function removeLabel(e, id) {
+            e.stopPropagation();
+            const idsToRemove = state.selectedIds.includes(id) ? state.selectedIds : [id];
+            
+            idsToRemove.forEach(idToRemove => {
+                let removedModem = null;
+                state.pages.forEach((page, pIdx) => {
+                    const lIdx = page.findIndex(l => l.uniqueId === idToRemove);
+                    if (lIdx > -1) {
+                        removedModem = page[lIdx].data;
+                        state.pages[pIdx].splice(lIdx, 1);
+                    }
+                });
+                
+                if (removedModem) {
+                    const stillOnPages = state.pages.some(p => p.some(l => l.data.id === removedModem.id));
+                    if (!stillOnPages && !state.unplaced.find(m => m.id === removedModem.id)) {
+                        state.unplaced.push(removedModem);
+                    }
+                }
+            });
+            
+            state.selectedIds = state.selectedIds.filter(id => !idsToRemove.includes(id));
+            renderInventory();
+            renderPages();
+        }
+
         // ... rotateLabel and removeLabel remain same ...
 
         window.onmousemove = (e) => {
