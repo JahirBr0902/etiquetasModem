@@ -271,6 +271,7 @@ function updatePropInputs() {
     document.getElementById('prop-bold-box').style.display = isText ? 'flex' : 'none';
     document.getElementById('prop-fill-box').style.display = ['rect', 'circle'].includes(firstItem.type) ? 'flex' : 'none';
     document.getElementById('prop-size-box').style.display = isText ? 'block' : 'none';
+    document.getElementById('prop-wifi-band').classList.toggle('hidden', firstItem.type !== 'qr_wifi');
     
     if (selectedIndices.length === 1) {
         document.getElementById('prop-content').value = firstItem.sampleText || '';
@@ -284,6 +285,10 @@ function updatePropInputs() {
         document.getElementById('prop-locked').checked = firstItem.locked;
         document.getElementById('lock-icon').className = firstItem.locked ? 'fas fa-lock text-blue-400' : 'fas fa-unlock';
         document.getElementById('bold-icon').className = firstItem.bold ? 'fas fa-bold text-blue-400' : 'fas fa-bold';
+
+        if (firstItem.type === 'qr_wifi') {
+            document.getElementById('prop-wifi-select').value = firstItem.wifiBand || 'normal';
+        }
     }
 }
 

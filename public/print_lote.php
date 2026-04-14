@@ -353,7 +353,10 @@ try {
                 } else if (item.type === 'qr_pass' || item.type === 'qr_wifi') {
                     let text = label.data.password;
                     if (item.type === 'qr_wifi') {
-                        text = `WIFI:S:${label.data.ssid};T:WPA;P:${label.data.password};;`;
+                        let ssid = label.data.ssid;
+                        if (item.wifiBand === '2.4g') ssid += "_2.4";
+                        if (item.wifiBand === '5g') ssid += "_5G";
+                        text = `WIFI:S:${ssid};T:WPA;P:${label.data.password};;`;
                     }
                     const qrUrl = `https://bwipjs-api.metafloor.com/?bcid=qrcode&text=${encodeURIComponent(text)}&scale=2`;
                     return `<div class="label-item" style="${style} background:white; padding:1mm;">

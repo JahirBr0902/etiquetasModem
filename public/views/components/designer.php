@@ -154,6 +154,15 @@
                         </div>
                     </div>
 
+                    <div id="prop-wifi-band" class="space-y-2 hidden">
+                        <label class="text-[8px] text-white/30 uppercase font-bold">Red WiFi (SSID)</label>
+                        <select id="prop-wifi-select" onchange="updateItemProp('wifiBand', this.value)" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white text-[10px] outline-none font-bold">
+                            <option value="normal">SSID Principal</option>
+                            <option value="2.4g">SSID 2.4G (_2.4)</option>
+                            <option value="5g">SSID 5G (_5G)</option>
+                        </select>
+                    </div>
+
                     <div class="flex flex-wrap gap-2 pt-2">
                         <label id="prop-bold-box" class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-lg border border-white/10 cursor-pointer hover:bg-white/10 transition-all">
                             <input type="checkbox" id="prop-bold" onchange="updateItemProp('bold', this.checked)" class="hidden">
