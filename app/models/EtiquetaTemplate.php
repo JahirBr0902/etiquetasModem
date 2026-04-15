@@ -23,20 +23,24 @@ class EtiquetaTemplate extends Model {
     }
 
     public function update($data) {
-        if (isset($data['config_json'])) {
-            $query = "UPDATE etiquetas_templates SET config_json = :config WHERE id = :id";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindValue(':config', $data['config_json']);
-            $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
-            return $stmt->execute();
-        } else {
-            $query = "UPDATE etiquetas_templates SET ancho = :ancho, alto = :alto WHERE id = :id";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindValue(':ancho', $data['ancho']);
-            $stmt->bindValue(':alto', $data['alto']);
-            $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
-            return $stmt->execute();
-        }
+        $fields = [];
+        if (isset($data['nombre'])) $fields[] = "nombre = :nombre";
+        if (isset($data['ancho'])) $fields[] = "ancho = :ancho";
+        if (isset($data['alto'])) $fields[] = "alto = :alto";
+        if (isset($data['config_json'])) $fields[] = "config_json = :config";
+        
+        if (empty($fields)) return false;
+
+        $query = "UPDATE etiquetas_templates SET " . implode(", ", $fields) . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        
+        $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
+        if (isset($data['nombre'])) $stmt->bindValue(':nombre', $data['nombre']);
+        if (isset($data['ancho'])) $stmt->bindValue(':ancho', $data['ancho']);
+        if (isset($data['alto'])) $stmt->bindValue(':alto', $data['alto']);
+        if (isset($data['config_json'])) $stmt->bindValue(':config', $data['config_json']);
+        
+        return $stmt->execute();
     }
 
     public function getById($id) {

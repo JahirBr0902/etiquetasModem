@@ -3,7 +3,7 @@
         <div class="flex items-center gap-6">
             <button onclick="switchView('templates')" class="h-10 w-10 bg-white/5 rounded-xl text-white/50 hover:text-white transition-all flex items-center justify-center"><i class="fas fa-chevron-left"></i></button>
             <div>
-                <h2 class="text-white text-lg uppercase tracking-tighter leading-none">Diseñador Maestro: <span id="design-template-name" class="text-blue-400">---</span></h2>
+                <h2 class="text-white text-lg uppercase tracking-tighter leading-none flex items-center gap-2">Diseñador: <input type="text" id="design-template-name" class="bg-transparent text-blue-400 outline-none border-b border-transparent focus:border-blue-400/30 transition-all w-64 px-1" value="---"></h2>
                 <p class="text-[9px] text-white/30 tracking-widest mt-1">Plantilla Base para Producción</p>
             </div>
         </div>

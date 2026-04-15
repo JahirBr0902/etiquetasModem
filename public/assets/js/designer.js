@@ -10,7 +10,7 @@ let startX, startY, startPositions = [];
 async function abrirDesigner(id) {
     currentDesignId = id; 
     const tpl = window.templates.find(t => t.id == id);
-    document.getElementById('design-template-name').textContent = tpl.nombre;
+    document.getElementById('design-template-name').value = tpl.nombre;
     
     document.getElementById('canvas-w-mm').value = tpl.ancho;
     document.getElementById('canvas-h-mm').value = tpl.alto;
@@ -340,28 +340,36 @@ function deselectAll() {
 
 async function guardarDiseno() {
     try {
+        const nombre = document.getElementById('design-template-name').value;
         const w = document.getElementById('canvas-w-mm').value;
         const h = document.getElementById('canvas-h-mm').value;
-        await fetch('api.php?controller=EtiquetaTemplates&action=guardar', {
-            method: 'POST',
-            body: JSON.stringify({ id: currentDesignId, ancho: w, alto: h })
-        });
+        
         const res = await fetch('api.php?controller=EtiquetaTemplates&action=guardar', {
             method: 'POST',
-            body: JSON.stringify({ id: currentDesignId, config_json: JSON.stringify(designItems) })
+            body: JSON.stringify({ 
+                id: currentDesignId, 
+                nombre: nombre,
+                ancho: w, 
+                alto: h,
+                config_json: JSON.stringify(designItems)
+            })
         });
-        if ((await res.json()).status === 'success') {
+        
+        const data = await res.json();
+        if (data.status === 'success') {
             showToast('Diseño Guardado', 'success');
             await fetchTemplates();
+        } else {
+            showToast(data.message || 'Error al guardar', 'error');
         }
-    } catch (e) { showToast('Error al guardar', 'error'); }
+    } catch (e) { showToast('Error crítico al guardar', 'error'); }
 }
 
 function mostrarPreviewImpresion() {
     const w = document.getElementById('canvas-w-mm').value;
     const h = document.getElementById('canvas-h-mm').value;
     const container = document.getElementById('preview-print-label');
-    const modeloNombre = document.getElementById('design-template-name').textContent || 'MODELO';
+    const modeloNombre = document.getElementById('design-template-name').value || 'MODELO';
     container.style.width = w + 'mm'; container.style.height = h + 'mm';
     container.style.position = 'relative'; container.style.background = 'white';
     container.style.overflow = 'hidden'; container.innerHTML = '';
@@ -432,5 +440,4 @@ function mostrarPreviewImpresion() {
     document.getElementById('modal-preview-print').classList.remove('hidden');
 }
 
-function cerrarPreviewImpresion() { document.getElementById('modal-preview-print').classList.add('hidden'); }
 function cerrarPreviewImpresion() { document.getElementById('modal-preview-print').classList.add('hidden'); }
