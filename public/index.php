@@ -16,6 +16,7 @@
         <div class="p-8">
             <?php 
                 include 'views/components/dashboard.php';
+                include 'views/components/inventario.php';
                 include 'views/components/produccion.php';
                 include 'views/components/impresion.php';
                 include 'views/components/modelos.php';

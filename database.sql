@@ -1,4 +1,4 @@
--- Script de base de datos - Witmac Etiquetas (Versión Pro)
+-- Script de base de datos - Witmac Etiquetas (Versión Inventario Pro)
 
 -- 1. Templates de Etiquetas
 CREATE TABLE IF NOT EXISTS etiquetas_templates (
@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS etiquetas_templates (
     nombre VARCHAR(100) NOT NULL,
     ancho FLOAT DEFAULT 50, -- mm
     alto FLOAT DEFAULT 30,  -- mm
-    config_json TEXT,       -- Aquí guardaremos fuentes, tamaños, posiciones, etc.
+    config_json TEXT,       -- Fuentes, tamaños, posiciones, etc.
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -26,19 +26,39 @@ CREATE TABLE IF NOT EXISTS lotes (
     nombre VARCHAR(100) NOT NULL,
     descripcion TEXT,
     estado VARCHAR(20) DEFAULT 'NUEVO',
-    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_finalizacion TIMESTAMP
 );
 
--- 4. Modems (Actualizado para usar modelo_id)
+-- 4. Modems (Maestro de Inventario)
 CREATE TABLE IF NOT EXISTS modems (
     id SERIAL PRIMARY KEY,
-    lote_id INTEGER REFERENCES lotes(id) ON DELETE CASCADE,
     modelo_id INTEGER REFERENCES modelos_modem(id),
     sn VARCHAR(50) UNIQUE NOT NULL,
     ssid VARCHAR(50) NOT NULL,
     password VARCHAR(50) NOT NULL,
-    estado VARCHAR(20) DEFAULT 'PENDIENTE',
+    estado_inventario VARCHAR(20) DEFAULT 'BODEGA', -- BODEGA, PRESTADO, DAÑADO
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Tabla Intermedia Lote-Modem (Para impresión)
+CREATE TABLE IF NOT EXISTS lote_modems (
+    id SERIAL PRIMARY KEY,
+    lote_id INTEGER REFERENCES lotes(id) ON DELETE CASCADE,
+    modem_id INTEGER REFERENCES modems(id) ON DELETE CASCADE,
+    estado_impresion VARCHAR(20) DEFAULT 'PENDIENTE', -- PENDIENTE, IMPRESO
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(lote_id, modem_id)
+);
+
+-- 6. Historial de Movimientos
+CREATE TABLE IF NOT EXISTS historial_modems (
+    id SERIAL PRIMARY KEY,
+    modem_id INTEGER REFERENCES modems(id) ON DELETE CASCADE,
+    tipo_movimiento VARCHAR(50) NOT NULL, -- REGISTRO, ASIGNACION_LOTE, PRESTAMO, DEVOLUCION, DAÑO, REPARACION
+    lote_id INTEGER REFERENCES lotes(id) ON DELETE SET NULL,
+    notas TEXT,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insertar algunos templates de prueba

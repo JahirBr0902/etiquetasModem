@@ -4,47 +4,67 @@ require_once __DIR__ . '/Model.php';
 
 class Modem extends Model {
     
-    public function create($lote_id, $modelo_id, $sn, $ssid, $password) {
-        $query = "INSERT INTO modems (lote_id, modelo_id, sn, ssid, password, estado) 
-                  VALUES (:lote_id, :modelo_id, :sn, :ssid, :password, 'PENDIENTE')";
+    public function create($data) {
+        $query = "INSERT INTO modems (modelo_id, sn, ssid, password, estado_inventario) 
+                  VALUES (:modelo_id, :sn, :ssid, :password, :estado)";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':lote_id', (int)$lote_id, PDO::PARAM_INT);
-        $stmt->bindValue(':modelo_id', (int)$modelo_id, PDO::PARAM_INT);
-        $stmt->bindValue(':sn', $sn, PDO::PARAM_STR);
-        $stmt->bindValue(':ssid', $ssid, PDO::PARAM_STR);
-        $stmt->bindValue(':password', $password, PDO::PARAM_STR);
+        $stmt->bindValue(':modelo_id', (int)$data['modelo_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':sn', $data['sn'], PDO::PARAM_STR);
+        $stmt->bindValue(':ssid', $data['ssid'], PDO::PARAM_STR);
+        $stmt->bindValue(':password', $data['password'], PDO::PARAM_STR);
+        $stmt->bindValue(':estado', $data['estado_inventario'] ?? 'BODEGA', PDO::PARAM_STR);
+        
+        if ($stmt->execute()) {
+            return $this->conn->lastInsertId();
+        }
+        return false;
+    }
+
+    public function update($data) {
+        $query = "UPDATE modems SET 
+                    modelo_id = :modelo_id, 
+                    sn = :sn, 
+                    ssid = :ssid, 
+                    password = :password,
+                    estado_inventario = :estado
+                  WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':id', (int)$data['id'], PDO::PARAM_INT);
+        $stmt->bindValue(':modelo_id', (int)$data['modelo_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':sn', $data['sn'], PDO::PARAM_STR);
+        $stmt->bindValue(':ssid', $data['ssid'], PDO::PARAM_STR);
+        $stmt->bindValue(':password', $data['password'], PDO::PARAM_STR);
+        $stmt->bindValue(':estado', $data['estado_inventario'], PDO::PARAM_STR);
         return $stmt->execute();
     }
 
-    public function update($id, $modelo_id, $sn, $ssid, $password) {
-        $query = "UPDATE modems SET modelo_id = :modelo_id, sn = :sn, ssid = :ssid, password = :password WHERE id = :id";
+    public function getBySN($sn) {
+        $query = "SELECT m.*, mod.nombre as modelo_nombre 
+                  FROM modems m
+                  LEFT JOIN modelos_modem mod ON m.modelo_id = mod.id
+                  WHERE m.sn = :sn";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        $stmt->bindValue(':modelo_id', (int)$modelo_id, PDO::PARAM_INT);
         $stmt->bindValue(':sn', $sn, PDO::PARAM_STR);
-        $stmt->bindValue(':ssid', $ssid, PDO::PARAM_STR);
-        $stmt->bindValue(':password', $password, PDO::PARAM_STR);
-        return $stmt->execute();
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function updateEstado($id, $nuevoEstado) {
-        $query = "UPDATE modems SET estado = :estado WHERE id = :id";
+    public function getAll() {
+        $query = "SELECT m.*, mod.nombre as modelo_nombre 
+                  FROM modems m
+                  LEFT JOIN modelos_modem mod ON m.modelo_id = mod.id
+                  ORDER BY m.fecha_registro DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function updateEstadoInventario($id, $nuevoEstado) {
+        $query = "UPDATE modems SET estado_inventario = :estado WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':estado', $nuevoEstado, PDO::PARAM_STR);
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         return $stmt->execute();
-    }
-
-    public function getByLote($lote_id) {
-        $query = "SELECT m.*, mod.nombre as modelo_nombre 
-                  FROM modems m
-                  LEFT JOIN modelos_modem mod ON m.modelo_id = mod.id
-                  WHERE m.lote_id = :lote_id 
-                  ORDER BY m.id ASC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':lote_id', (int)$lote_id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function delete($id) {

@@ -17,16 +17,18 @@ try {
     $lote = $stLote->fetch(PDO::FETCH_ASSOC);
     if (!$lote) die("Lote no encontrado");
 
-    // Obtener modems con sus modelos y templates
+    // Obtener modems con sus modelos y templates mediante la tabla intermedia lote_modems
     $query = "SELECT m.*, mod.nombre as modelo_nombre,
               tp.ancho as p_ancho, tp.alto as p_alto, tp.config_json as p_config,
-              ts.ancho as s_ancho, ts.alto as s_alto, ts.config_json as s_config
-              FROM modems m
+              ts.ancho as s_ancho, ts.alto as s_alto, ts.config_json as s_config,
+              lm.estado_impresion
+              FROM lote_modems lm
+              JOIN modems m ON lm.modem_id = m.id
               LEFT JOIN modelos_modem mod ON m.modelo_id = mod.id
               LEFT JOIN etiquetas_templates tp ON mod.etiqueta_primaria_id = tp.id
               LEFT JOIN etiquetas_templates ts ON mod.etiqueta_secundaria_id = ts.id
-              WHERE m.lote_id = :lote_id
-              ORDER BY m.id ASC";
+              WHERE lm.lote_id = :lote_id
+              ORDER BY lm.id ASC";
     
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':lote_id', $lote_id);
@@ -86,7 +88,7 @@ try {
             flex: 1; 
             height: 100vh; 
             overflow-y: auto; 
-            padding: 60px 60px 250px 60px; /* Aumentado el margen inferior a 250px */
+            padding: 60px 60px 250px 60px;
             display: flex; 
             flex-direction: column; 
             align-items: center; 
@@ -101,7 +103,7 @@ try {
             position: relative; 
             flex-shrink: 0;
             overflow: hidden;
-            border: 1px solid #475569; /* Borde oscuro para ver el final de la hoja */
+            border: 1px solid #475569;
         }
         .page::after { content: 'PÁGINA ' attr(data-page-num); position: absolute; left: -100px; top: 0; color: #64748b; font-weight: 900; font-size: 14px; width: 80px; text-align: right; }
 
@@ -112,7 +114,6 @@ try {
         .label-placed:hover { outline: 2px solid #3b82f6; border-color: transparent; }
         .label-placed.selected { outline: 2px solid #3b82f6; border-color: transparent; z-index: 50; }
         
-        /* Recuadro de selección */
         .selection-box {
             position: fixed; border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.1);
             pointer-events: none; z-index: 1000; display: none;
@@ -216,7 +217,7 @@ try {
             currentPaperSize: 'letter',
             pages: [[]], 
             unplaced: [...modems],
-            selectedIds: [], // Ahora es un array
+            selectedIds: [],
             isDragging: false,
             isMarquee: false,
             startX: 0,
@@ -242,73 +243,72 @@ try {
         }
 
         function renderPages() {
-    const area = document.getElementById('canvas-area');
-    area.innerHTML = '';
-    
-    state.pages.forEach((pageLabels, pageIdx) => {
-        const pageEl = document.createElement('div');
-        pageEl.className = 'page';
-        pageEl.dataset.pageNum = pageIdx + 1;
-        pageEl.style.width = paperSizes[state.currentPaperSize].w + 'mm';
-        pageEl.style.height = paperSizes[state.currentPaperSize].h + 'mm';
-        
-        pageEl.ondragover = (e) => e.preventDefault();
-        pageEl.ondrop = (e) => dropLabel(e, pageIdx);
-
-        pageLabels.forEach((label) => {
-            const isSelected = state.selectedIds.includes(label.uniqueId);
-            const lEl = document.createElement('div');
-            lEl.className = `label-placed ${isSelected ? 'selected' : ''}`;
-            lEl.dataset.id = label.uniqueId;
+            const area = document.getElementById('canvas-area');
+            area.innerHTML = '';
             
-            const isRotated = (label.rotation % 180 !== 0);
-            lEl.style.width = (isRotated ? label.h : label.w) + 'mm';
-            lEl.style.height = (isRotated ? label.w : label.h) + 'mm';
-            lEl.style.left = label.x + 'mm';
-            lEl.style.top = label.y + 'mm';
-            
-            lEl.onmousedown = (e) => selectLabel(e, label.uniqueId);
-            
-            lEl.innerHTML = `
-                <div class="label-controls no-print">
-                    <button class="ctrl-btn" onmousedown="rotateLabel(event, '${label.uniqueId}', 90)"><i class="fas fa-sync"></i></button>
-                    <button class="ctrl-btn danger" onmousedown="removeLabel(event, '${label.uniqueId}')"><i class="fas fa-trash"></i></button>
-                </div>
-                <div class="label-content" style="transform: rotate(${label.rotation}deg); width:${label.w}mm; height:${label.h}mm;">
-                    ${renderLabelContent(label)}
-                </div>
-            `;
-            pageEl.appendChild(lEl);
-        });
+            state.pages.forEach((pageLabels, pageIdx) => {
+                const pageEl = document.createElement('div');
+                pageEl.className = 'page';
+                pageEl.dataset.pageNum = pageIdx + 1;
+                pageEl.style.width = paperSizes[state.currentPaperSize].w + 'mm';
+                pageEl.style.height = paperSizes[state.currentPaperSize].h + 'mm';
+                
+                pageEl.ondragover = (e) => e.preventDefault();
+                pageEl.ondrop = (e) => dropLabel(e, pageIdx);
 
-        area.appendChild(pageEl);
-
-        const separator = document.createElement('div');
-        separator.className = 'no-print page-separator';
-        separator.innerHTML = `<span>— Fin de hoja ${pageIdx + 1} —</span>`;
-        area.appendChild(separator);
-    });
-
-    // Generar códigos de barras después del renderizado
-    requestAnimationFrame(() => {
-        document.querySelectorAll('svg[data-barcode-value]').forEach(svg => {
-            try {
-                JsBarcode(svg, svg.dataset.barcodeValue, {
-                    format: 'CODE128',
-                    displayValue: true,
-                    fontSize: 24,
-                    margin: 2,
-                    width: 2,
-                    height: 50,
-                    flat: true,
-                    background: "#ffffff"
+                pageLabels.forEach((label) => {
+                    const isSelected = state.selectedIds.includes(label.uniqueId);
+                    const lEl = document.createElement('div');
+                    lEl.className = `label-placed ${isSelected ? 'selected' : ''}`;
+                    lEl.dataset.id = label.uniqueId;
+                    
+                    const isRotated = (label.rotation % 180 !== 0);
+                    lEl.style.width = (isRotated ? label.h : label.w) + 'mm';
+                    lEl.style.height = (isRotated ? label.w : label.h) + 'mm';
+                    lEl.style.left = label.x + 'mm';
+                    lEl.style.top = label.y + 'mm';
+                    
+                    lEl.onmousedown = (e) => selectLabel(e, label.uniqueId);
+                    
+                    lEl.innerHTML = `
+                        <div class="label-controls no-print">
+                            <button class="ctrl-btn" onmousedown="rotateLabel(event, '${label.uniqueId}', 90)"><i class="fas fa-sync"></i></button>
+                            <button class="ctrl-btn danger" onmousedown="removeLabel(event, '${label.uniqueId}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div class="label-content" style="transform: rotate(${label.rotation}deg); width:${label.w}mm; height:${label.h}mm;">
+                            ${renderLabelContent(label)}
+                        </div>
+                    `;
+                    pageEl.appendChild(lEl);
                 });
-            } catch (err) {
-                console.warn('Barcode error en', svg.id, err);
-            }
-        });
-    });
-}
+
+                area.appendChild(pageEl);
+
+                const separator = document.createElement('div');
+                separator.className = 'no-print page-separator';
+                separator.innerHTML = `<span>— Fin de hoja ${pageIdx + 1} —</span>`;
+                area.appendChild(separator);
+            });
+
+            requestAnimationFrame(() => {
+                document.querySelectorAll('svg[data-barcode-value]').forEach(svg => {
+                    try {
+                        JsBarcode(svg, svg.dataset.barcodeValue, {
+                            format: 'CODE128',
+                            displayValue: true,
+                            fontSize: 24,
+                            margin: 2,
+                            width: 2,
+                            height: 50,
+                            flat: true,
+                            background: "#ffffff"
+                        });
+                    } catch (err) {
+                        console.warn('Barcode error en', svg.id, err);
+                    }
+                });
+            });
+        }
 
         function renderLabelContent(label) {
             const config = label.isSecondary ? label.data.s_config : label.data.p_config;
@@ -342,11 +342,8 @@ try {
                     let val = label.data.sn;
                     if (item.type === 'barcode_pass') val = label.data.password;
                     if (item.type === 'barcode_model') val = label.data.modelo_nombre;
-                    
                     const suffix = item.type.split('_')[1] || 'sn';
                     const bcId = `bc_${label.data.sn.replace(/[^a-zA-Z0-9]/g, '')}_${suffix}_${label.isSecondary ? 's' : 'p'}`;
-                    
-                    // Añadimos shape-rendering: crispEdges para máxima nitidez
                     return `<div class="label-item" style="${style}">
                         <svg id="${bcId}" data-barcode-value="${val}" style="width:100%; height:100%; shape-rendering: crispEdges;"></svg>
                     </div>`;
@@ -373,8 +370,6 @@ try {
                 return '';
             }).join('');
         }
-
-        // --- ACCIONES ---
 
         function updatePaperSize() {
             state.currentPaperSize = document.getElementById('paper-size').value;
@@ -443,7 +438,6 @@ try {
             state.startX = e.clientX;
             state.startY = e.clientY;
 
-            // Calcular offsets iniciales respecto al ratón en mm
             state.dragOffsets = [];
             state.selectedIds.forEach(sid => {
                 state.pages.forEach((p, pIdx) => p.forEach(l => {
@@ -469,25 +463,14 @@ try {
             state.isMarquee = true;
             state.marqueeStartX = e.clientX;
             state.marqueeStartY = e.clientY;
-            
-            // Deseleccionar todo inmediatamente al hacer click en el fondo
             state.selectedIds = [];
             state.dragOffsets = [];
-            
             const box = document.getElementById('selection-box');
             box.style.display = 'block';
             box.style.left = e.clientX + 'px';
             box.style.top = e.clientY + 'px';
             box.style.width = '0px';
             box.style.height = '0px';
-
-            renderPages();
-        }
-
-        function deselectLabel() {
-            state.selectedIds = [];
-            state.isDragging = false;
-            state.dragOffsets = [];
             renderPages();
         }
 
@@ -529,8 +512,6 @@ try {
             renderPages();
         }
 
-        // ... rotateLabel and removeLabel remain same ...
-
         window.onmousemove = (e) => {
             if (state.isMarquee) {
                 const box = document.getElementById('selection-box');
@@ -538,7 +519,6 @@ try {
                 const y = Math.min(e.clientY, state.marqueeStartY);
                 const w = Math.abs(e.clientX - state.marqueeStartX);
                 const h = Math.abs(e.clientY - state.marqueeStartY);
-                
                 box.style.left = x + 'px';
                 box.style.top = y + 'px';
                 box.style.width = w + 'px';
@@ -559,8 +539,6 @@ try {
             }
 
             if (!state.isDragging || state.selectedIds.length === 0) return;
-            
-            // Detectar página bajo el mouse
             const elementsUnderMouse = document.elementsFromPoint(e.clientX, e.clientY);
             const targetPageEl = elementsUnderMouse.find(el => el.classList.contains('page'));
             
@@ -568,30 +546,23 @@ try {
                 const targetPageIndex = parseInt(targetPageEl.dataset.pageNum) - 1;
                 const rect = targetPageEl.getBoundingClientRect();
                 const mmScale = paperSizes[state.currentPaperSize].w / rect.width;
-                
                 const mouseXmm = (e.clientX - rect.left) * mmScale;
                 const mouseYmm = (e.clientY - rect.top) * mmScale;
 
                 state.selectedIds.forEach(id => {
                     const offset = state.dragOffsets.find(o => o.id === id);
                     if (!offset) return;
-
                     let sourcePageIndex = -1;
                     let targetLabel = null;
-                    
                     state.pages.forEach((p, pIdx) => p.forEach(l => {
                         if (l.uniqueId === id) {
                             targetLabel = l;
                             sourcePageIndex = pIdx;
                         }
                     }));
-
                     if (targetLabel) {
-                        // Actualizar posición relativa a la página actual del mouse
                         targetLabel.x = mouseXmm + offset.dx;
                         targetLabel.y = mouseYmm + offset.dy;
-
-                        // Si cambió de página, mover al array correspondiente
                         if (sourcePageIndex !== targetPageIndex) {
                             const lIdx = state.pages[sourcePageIndex].findIndex(l => l.uniqueId === id);
                             state.pages[sourcePageIndex].splice(lIdx, 1);
@@ -600,9 +571,6 @@ try {
                     }
                 });
             }
-
-            state.startX = e.clientX;
-            state.startY = e.clientY;
             renderPages();
         };
 
@@ -614,88 +582,68 @@ try {
             }
         };
 
-    function autoArrange() {
-    const paper = paperSizes[state.currentPaperSize];
-    const margin = 5;
-    const gap = 2;
-
-    const allModemsMap = new Map();
-    state.unplaced.forEach(m => allModemsMap.set(m.id, m));
-    state.pages.forEach(p => p.forEach(l => allModemsMap.set(l.data.id, l.data)));
-    const allModems = [...allModemsMap.values()];
-
-    const itemsToPlace = [];
-    allModems.forEach(m => {
-        itemsToPlace.push({ data: m, w: parseFloat(m.p_ancho), h: parseFloat(m.p_alto), isSec: false });
-        if (m.s_config) {
-            itemsToPlace.push({ data: m, w: parseFloat(m.s_ancho), h: parseFloat(m.s_alto), isSec: true });
-        }
-    });
-
-    state.pages = [[]];
-    state.unplaced = [];
-
-    let curPage = 0;
-    let curX = margin;
-    let curY = margin;
-    let maxRowH = 0;
-    const usableW = paper.w - margin * 2;
-    const usableH = paper.h - margin * 2;
-
-    itemsToPlace.forEach(item => {
-        let w = item.w;
-        let h = item.h;
-        let rotation = 0;
-
-        // ¿No cabe normal en la fila? Intentar rotada
-        if (curX + w > margin + usableW && curX > margin) {
-            if (curX + h <= margin + usableW && h <= usableH) {
-                // Rotada sí cabe en esta fila, usarla
-                [w, h] = [h, w];
-                rotation = 90;
-            } else {
-                // Ninguna orientación cabe en esta fila, saltar a nueva fila
-                curX = margin;
-                curY += maxRowH + gap;
-                maxRowH = 0;
-                // En la nueva fila, ¿conviene rotarla para ahorrar alto de fila?
-                if (h > w && w <= usableH) {
-                    [w, h] = [h, w];
-                    rotation = 90;
+        function autoArrange() {
+            const paper = paperSizes[state.currentPaperSize];
+            const margin = 5;
+            const gap = 2;
+            const allModemsMap = new Map();
+            state.unplaced.forEach(m => allModemsMap.set(m.id, m));
+            state.pages.forEach(p => p.forEach(l => allModemsMap.set(l.data.id, l.data)));
+            const allModems = [...allModemsMap.values()];
+            const itemsToPlace = [];
+            allModems.forEach(m => {
+                itemsToPlace.push({ data: m, w: parseFloat(m.p_ancho), h: parseFloat(m.p_alto), isSec: false });
+                if (m.s_config) {
+                    itemsToPlace.push({ data: m, w: parseFloat(m.s_ancho), h: parseFloat(m.s_alto), isSec: true });
                 }
-            }
+            });
+            state.pages = [[]];
+            state.unplaced = [];
+            let curPage = 0;
+            let curX = margin;
+            let curY = margin;
+            let maxRowH = 0;
+            const usableW = paper.w - margin * 2;
+            const usableH = paper.h - margin * 2;
+            itemsToPlace.forEach(item => {
+                let w = item.w;
+                let h = item.h;
+                let rotation = 0;
+                if (curX + w > margin + usableW && curX > margin) {
+                    if (curX + h <= margin + usableW && h <= usableH) {
+                        [w, h] = [h, w];
+                        rotation = 90;
+                    } else {
+                        curX = margin;
+                        curY += maxRowH + gap;
+                        maxRowH = 0;
+                        if (h > w && w <= usableH) {
+                            [w, h] = [h, w];
+                            rotation = 90;
+                        }
+                    }
+                }
+                if (curY + h > margin + usableH) {
+                    curPage++;
+                    state.pages.push([]);
+                    curX = margin;
+                    curY = margin;
+                    maxRowH = 0;
+                    rotation = 0;
+                    w = item.w;
+                    h = item.h;
+                }
+                state.pages[curPage].push({
+                    uniqueId: Math.random().toString(36).substr(2, 9),
+                    data: item.data, x: curX, y: curY, w: item.w, h: item.h,
+                    rotation, isSecondary: item.isSec
+                });
+                curX += w + gap;
+                if (h > maxRowH) maxRowH = h;
+            });
+            renderInventory();
+            renderPages();
         }
-
-        // ¿No cabe verticalmente en esta página?
-        if (curY + h > margin + usableH) {
-            curPage++;
-            state.pages.push([]);
-            curX = margin;
-            curY = margin;
-            maxRowH = 0;
-            rotation = 0;
-            w = item.w;
-            h = item.h;
-        }
-
-        state.pages[curPage].push({
-            uniqueId: Math.random().toString(36).substr(2, 9),
-            data: item.data,
-            x: curX,
-            y: curY,
-            w: item.w,   // dimensión original siempre
-            h: item.h,
-            rotation,
-            isSecondary: item.isSec
-        });
-
-        curX += w + gap;
-        if (h > maxRowH) maxRowH = h;
-    });
-
-    renderInventory();
-    renderPages();
-}
 
         init();
     </script>
