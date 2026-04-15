@@ -38,6 +38,30 @@
     </div>
 </div>
 
+<div id="modal-template" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md p-10 space-y-6 italic font-black uppercase">
+        <h3 class="text-2xl tracking-tighter">Nuevo Formato</h3>
+        <div class="space-y-4 not-italic">
+            <div class="space-y-1">
+                <label class="text-[9px] font-black uppercase text-slate-400 ml-4">Nombre del Formato</label>
+                <input type="text" id="tpl-nombre" class="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none" placeholder="Ej: Estándar Witmac">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black uppercase text-slate-400 ml-4">Ancho (mm)</label>
+                    <input type="number" id="tpl-ancho" class="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none" placeholder="50">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black uppercase text-slate-400 ml-4">Alto (mm)</label>
+                    <input type="number" id="tpl-alto" class="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none" placeholder="30">
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-4"><button onclick="cerrarModalTemplate()" class="flex-1 bg-slate-100 py-5 rounded-2xl text-[10px] tracking-widest">Cerrar</button><button onclick="guardarTemplate()" class="flex-1 bg-blue-600 text-white py-5 rounded-2xl text-[10px] tracking-widest shadow-xl">Crear</button></div>
+    </div>
+</div>
+
 <div id="modal-confirm" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-sm p-10 text-center space-y-6">
         <div class="h-20 w-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto text-2xl shadow-inner">

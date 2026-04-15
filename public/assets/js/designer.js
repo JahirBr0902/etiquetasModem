@@ -68,8 +68,14 @@ function renderDesignItems() {
             
             if (['sn', 'ssid', 'pass', 'ssid2', 'ssid3', 'modelo'].includes(item.type)) {
                 el.classList.add('text-blue-600', 'font-black');
-                if (item.type === 'ssid2') el.classList.replace('text-blue-600', 'text-indigo-600');
-                if (item.type === 'ssid3') el.classList.replace('text-blue-600', 'text-purple-600');
+                if (item.type === 'ssid2') {
+                    el.classList.remove('text-blue-600');
+                    el.classList.add('text-indigo-600');
+                }
+                if (item.type === 'ssid3') {
+                    el.classList.remove('text-blue-600');
+                    el.classList.add('text-purple-600');
+                }
             }
         } else if (item.type === 'barcode' || item.type === 'barcode_pass' || item.type === 'barcode_model') {
             const label = item.type === 'barcode' ? 'SN' : (item.type === 'barcode_pass' ? 'PASS' : 'MODEL');
@@ -78,10 +84,13 @@ function renderDesignItems() {
                 <i class="fas fa-barcode text-2xl text-${color}-600"></i>
                 <span class="text-[6px] font-black uppercase mt-1 text-${color}-600">CÓDIGO ${label}</span>
             </div>`;
-        } else if (item.type === 'qr_pass') {
+        } else if (item.type === 'qr_pass' || item.type === 'qr_wifi') {
+            const isWifi = item.type === 'qr_wifi';
+            const color = isWifi ? 'green-600' : 'slate-800';
+            const label = isWifi ? 'QR WIFI' : 'QR PASS';
             el.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full bg-white border border-slate-200">
-                <i class="fas fa-qrcode text-3xl text-slate-800"></i>
-                <span class="text-[5px] font-black uppercase mt-1 text-slate-800">QR PASS</span>
+                <i class="fas fa-qrcode text-3xl text-${color}"></i>
+                <span class="text-[5px] font-black uppercase mt-1 text-${color}">${label}</span>
             </div>`;
         } else if (item.type === 'image') {
             el.style.backgroundImage = `url(${item.src})`;
@@ -352,6 +361,7 @@ function mostrarPreviewImpresion() {
     const w = document.getElementById('canvas-w-mm').value;
     const h = document.getElementById('canvas-h-mm').value;
     const container = document.getElementById('preview-print-label');
+    const modeloNombre = document.getElementById('design-template-name').textContent || 'MODELO';
     container.style.width = w + 'mm'; container.style.height = h + 'mm';
     container.style.position = 'relative'; container.style.background = 'white';
     container.style.overflow = 'hidden'; container.innerHTML = '';
@@ -359,41 +369,63 @@ function mostrarPreviewImpresion() {
     designItems.forEach(item => {
         const el = document.createElement('div');
         el.style.position = 'absolute';
-        el.style.left = (item.x / MM_TO_PX) + 'mm';
-        el.style.top = (item.y / MM_TO_PX) + 'mm';
-        el.style.width = (item.width / MM_TO_PX) + 'mm';
-        el.style.height = (item.height / MM_TO_PX) + 'mm';
+        el.style.left = (item.x / MM_TO_PX / w * 100) + '%';
+        el.style.top = (item.y / MM_TO_PX / h * 100) + '%';
+        el.style.width = (item.width / MM_TO_PX / w * 100) + '%';
+        el.style.height = (item.height / MM_TO_PX / h * 100) + '%';
         el.style.color = item.color || '#000';
         el.style.zIndex = item.zIndex || 0;
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.textAlign = 'center';
+        el.style.overflow = 'hidden';
         
-        if (['sn', 'ssid', 'pass', 'ssid2', 'modelo', 'texto'].includes(item.type)) {
-            el.style.fontSize = (item.fontSize / (MM_TO_PX/1.3)) + 'mm'; 
+        if (['sn', 'ssid', 'pass', 'ssid2', 'ssid3', 'modelo', 'texto'].includes(item.type)) {
+            el.style.fontSize = (item.fontSize / 4.5) + 'mm'; 
             el.style.fontWeight = item.bold ? 'bold' : 'normal';
             el.style.fontFamily = item.fontFamily || 'sans-serif';
-            el.style.display = 'flex'; el.style.alignItems = 'center';
-            el.style.justifyContent = 'center'; el.style.textAlign = 'center';
-            el.textContent = item.sampleText;
+            
+            let content = item.sampleText;
+            if (item.type === 'sn') content = "SN-12345678";
+            if (item.type === 'ssid') content = "WITMAC_WIFI";
+            if (item.type === 'pass') content = "PASS1234";
+            if (item.type === 'modelo') content = modeloNombre;
+            el.textContent = content;
+
         } else if (['barcode', 'barcode_pass', 'barcode_model'].includes(item.type)) {
-            const label = item.type === 'barcode' ? 'SN' : (item.type === 'barcode_pass' ? 'PASS' : 'MODEL');
-            el.style.background = '#000'; el.style.display = 'flex';
-            el.style.flexDirection = 'column'; el.style.alignItems = 'center';
-            el.style.justifyContent = 'flex-end';
-            el.innerHTML = `<div style="width:90%; height:70%; background: repeating-linear-gradient(90deg, #fff, #fff 1px, #000 1px, #000 3px);"></div><span style="color:#fff; font-size:1.5mm; font-weight:bold; margin-bottom:0.5mm">${label}</span>`;
-        } else if (item.type === 'qr_pass') {
-            el.style.background = '#000'; el.style.display = 'flex';
-            el.style.alignItems = 'center'; el.style.justifyContent = 'center';
-            el.innerHTML = `<i class="fas fa-qrcode" style="color:white; font-size: 5mm;"></i>`;
+            let text = "SN-12345678";
+            if (item.type === 'barcode_pass') text = "PASS1234";
+            if (item.type === 'barcode_model') text = modeloNombre;
+            const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(text)}&scale=2&rotate=N&includetext=false`;
+            
+            el.style.flexDirection = 'column';
+            el.style.background = 'white';
+            el.innerHTML = `
+                <img src="${barcodeUrl}" style="width:95%; height:75%; object-fit:stretch;">
+                <span style="font-size:1.6mm; font-weight:900; margin-top:0.2mm; color:black; font-family:'JetBrains Mono', monospace; line-height:1">${text}</span>
+            `;
+
+        } else if (item.type === 'qr_pass' || item.type === 'qr_wifi') {
+            let text = "PASS1234";
+            if (item.type === 'qr_wifi') text = "WIFI:S:WITMAC_WIFI;T:WPA;P:PASS1234;;";
+            const qrUrl = `https://bwipjs-api.metafloor.com/?bcid=qrcode&text=${encodeURIComponent(text)}&scale=2`;
+            
+            el.style.background = 'white';
+            el.style.padding = '0.5mm';
+            el.innerHTML = `<img src="${qrUrl}" style="width:100%; height:100%; object-fit:contain;">`;
+
         } else if (item.type === 'image') {
-            el.style.backgroundImage = `url(${item.src})`;
-            el.style.backgroundSize = 'contain'; el.style.backgroundRepeat = 'no-repeat';
-            el.style.backgroundPosition = 'center';
+            el.innerHTML = `<img src="${item.src}" style="width:100%; height:100%; object-fit:contain;">`;
+
         } else if (item.type === 'rect' || item.type === 'circle') {
-            el.style.border = `${(item.borderWidth || 1) / (MM_TO_PX/1.5)}mm solid ${item.color || '#000'}`;
+            el.style.border = `0.2mm solid ${item.color || '#000'}`;
             if (item.fill) el.style.backgroundColor = item.color || '#000';
             if (item.type === 'circle') el.style.borderRadius = '50%';
+
         } else if (item.type === 'line') {
             el.style.height = '0';
-            el.style.borderTop = `${(item.borderWidth || 1) / (MM_TO_PX/1.5)}mm solid ${item.color || '#000'}`;
+            el.style.borderTop = `0.2mm solid ${item.color || '#000'}`;
         }
         container.appendChild(el);
     });

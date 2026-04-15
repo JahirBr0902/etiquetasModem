@@ -373,7 +373,14 @@ async function guardarModelo() {
     const payload = { nombre, cant_etiquetas: cant, etiqueta_primaria_id: p_id, etiqueta_secundaria_id: s_id || null };
     if (window.currentModeloId) payload.id = window.currentModeloId;
     const res = await fetch('api.php?controller=ModeloModems&action=guardar', { method: 'POST', body: JSON.stringify(payload) });
-    if ((await res.json()).status === 'success') { cerrarModalModelo(); fetchModelos(); showToast(window.currentModeloId ? 'Modelo Actualizado' : 'Modelo Guardado', 'success'); }
+    const data = await res.json();
+    if (data.status === 'success') { 
+        cerrarModalModelo(); 
+        fetchModelos(); 
+        showToast(window.currentModeloId ? 'Modelo Actualizado' : 'Modelo Guardado', 'success'); 
+    } else {
+        showToast(data.message || 'Error al guardar modelo', 'error');
+    }
 }
 
 function editarModelo(id) {
@@ -392,8 +399,16 @@ async function guardarTemplate() {
     const nombre = document.getElementById('tpl-nombre').value;
     const ancho = document.getElementById('tpl-ancho').value;
     const alto = document.getElementById('tpl-alto').value;
+    if (!nombre || !ancho || !alto) return showToast('Todos los campos son obligatorios', 'error');
     const res = await fetch('api.php?controller=EtiquetaTemplates&action=guardar', { method: 'POST', body: JSON.stringify({ nombre, ancho, alto, config_json: '[]' }) });
-    if ((await res.json()).status === 'success') { cerrarModalTemplate(); fetchTemplates(); showToast('Formato Creado', 'success'); }
+    const data = await res.json();
+    if (data.status === 'success') { 
+        cerrarModalTemplate(); 
+        fetchTemplates(); 
+        showToast('Formato Creado', 'success'); 
+    } else {
+        showToast(data.message || 'Error al guardar template', 'error');
+    }
 }
 
 document.getElementById('sn').addEventListener('input', (e) => {
@@ -448,5 +463,10 @@ function abrirModalModelo() {
     document.getElementById('modal-modelo').classList.remove('hidden'); 
 }
 function cerrarModalModelo() { window.currentModeloId = null; document.getElementById('modal-modelo').classList.add('hidden'); }
-function abrirModalTemplate() { document.getElementById('modal-template').classList.remove('hidden'); }
+function abrirModalTemplate() { 
+    document.getElementById('tpl-nombre').value = '';
+    document.getElementById('tpl-ancho').value = '50';
+    document.getElementById('tpl-alto').value = '30';
+    document.getElementById('modal-template').classList.remove('hidden'); 
+}
 function cerrarModalTemplate() { document.getElementById('modal-template').classList.add('hidden'); }
